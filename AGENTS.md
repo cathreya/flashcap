@@ -4,12 +4,9 @@ Instructions for agents working in this repo. Read this before changing code or 
 
 ## What this is
 
-A personal reading list and flashcard app. Telegram is the inbox: links saved in a channel are pulled into a local SQLite library, studied as flashcards, and archived to a done list when finished.
+Flashcap: a personal reading list and flashcard app. Telegram is the inbox: links saved in a channel are pulled into a local SQLite library, studied as flashcards, and archived to a done list when finished.
 
-Two Flask apps live here:
-
-- `capture/` is the live app. Library, cards, review, notes, quiz, Telegram ingestion. Run and deploy this one.
-- `app/` is the old Lecture Today tutor. The library does not use it and it is not deployed. Do not extend it, and do not make `capture/` depend on it.
+The Python package is `capture/`. It is a single Flask app: library, cards, review, notes, quiz, Telegram ingestion. This repo was split out of the old `readlist` repository; Lecture Today lives separately and is not used here.
 
 ## Where things run
 
@@ -34,9 +31,9 @@ ssh hermes 'cd ~/flashcap && git fetch origin main && git reset --hard origin/ma
 If GitHub credentials are missing on hermes, send a bundle from the Mac:
 
 ```bash
-git bundle create /tmp/readlist.bundle main
-scp /tmp/readlist.bundle hermes:/tmp/
-ssh hermes 'cd ~/flashcap && git fetch /tmp/readlist.bundle main:refs/remotes/origin/main && git reset --hard origin/main && systemctl --user restart flashcap.service'
+git bundle create /tmp/flashcap.bundle main
+scp /tmp/flashcap.bundle hermes:/tmp/
+ssh hermes 'cd ~/flashcap && git fetch /tmp/flashcap.bundle main:refs/remotes/origin/main && git reset --hard origin/main && systemctl --user restart flashcap.service'
 ```
 
 Check the deploy:
@@ -53,7 +50,7 @@ curl -s https://hermes.taila17c7c.ts.net/api/health
 - `.env` at the repo root is ignored and never committed. It holds the LLM key and the Telegram ids.
 - Hermes has its own `.env`. Do not copy the Mac `.env` over it. Append keys instead.
 - The database is `capture/flashcards.db` unless `FLASHCAP_DB` says otherwise. Hermes holds the real cards and library. Do not overwrite it during a deploy.
-- `pyproject.toml`, `uv.lock`, `.python-version`, and `.gitignore` are untracked locally. Hermes installs from `capture/requirements.txt`.
+- Hermes installs from `capture/requirements.txt`. Locally, `uv sync` uses `pyproject.toml`.
 
 ## Telegram rules
 
@@ -99,10 +96,9 @@ curl -s https://hermes.taila17c7c.ts.net/api/health
 - `/api/health` exposes the Telegram state. Check it first when ingestion looks dead.
 - `messages.html` is the Telegram export. `capture/backfill.py` reads it.
 
-## Git and worktrees
+## Git
 
-- `main` is trunk. The repo uses squash-style merges for PRs.
-- Do not work in `/Users/cathreya/Desktop/sync/Vibecoding/claude--308`. It is a stale worktree at the initial commit.
+- `main` is trunk, and this repo has a single remote (`origin`). The old combined `readlist` repo is separate; do not push this work there.
 - The working tree may have untracked project files. Commit only the files a change needs.
 - Do not commit `.env`, `capture/flashcards.db`, or `certs`.
 
