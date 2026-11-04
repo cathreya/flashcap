@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from capture import backfill, library, server, store, telegram
@@ -46,6 +48,86 @@ EXPORT_HTML = """<html><body>
   </div>
 </div>
 </body></html>"""
+
+
+EXPORT_JSON = {
+    "name": "Stuff to Watch/Listen/Read",
+    "type": "private_channel",
+    "id": 1654216981,
+    "messages": [
+        {
+            "id": 20,
+            "type": "message",
+            "date": "2026-05-08T15:58:43",
+            "date_unixtime": "1778252323",
+            "from": "Stuff to Watch/Listen/Read",
+            "from_id": "channel1654216981",
+            "text": [
+                {"type": "link", "text": "https://stratechery.com/aggregation-theory/"}
+            ],
+            "text_entities": [
+                {"type": "link", "text": "https://stratechery.com/aggregation-theory/"}
+            ],
+        },
+        {
+            "id": 21,
+            "type": "message",
+            "date": "2026-05-09T10:00:00",
+            "date_unixtime": "1778317200",
+            "from": "Stuff to Watch/Listen/Read",
+            "from_id": "channel1654216981",
+            "text": [
+                "Worth reading: ",
+                {
+                    "type": "text_link",
+                    "text": "Harness engineering",
+                    "href": "https://framer.com/blog/harness-2/?utm_source=x",
+                },
+            ],
+            "text_entities": [
+                {"type": "plain", "text": "Worth reading: "},
+                {
+                    "type": "text_link",
+                    "text": "Harness engineering",
+                    "href": "https://framer.com/blog/harness-2/?utm_source=x",
+                },
+            ],
+        },
+        {
+            "id": 22,
+            "type": "message",
+            "date": "2026-05-10T08:30:00",
+            "date_unixtime": "1778401800",
+            "from": "Stuff to Watch/Listen/Read",
+            "from_id": "channel1654216981",
+            "text": "Remember to cancel the subscription",
+            "text_entities": [{"type": "plain", "text": "Remember to cancel the subscription"}],
+        },
+        {
+            "id": 23,
+            "type": "message",
+            "date": "2026-05-11T09:00:00",
+            "date_unixtime": "1778489400",
+            "from": "Stuff to Watch/Listen/Read",
+            "from_id": "channel1654216981",
+            "file": "files/paper.pdf",
+            "file_name": "paper.pdf",
+            "file_size": 1234,
+            "mime_type": "application/pdf",
+            "text": "",
+            "text_entities": [],
+        },
+        {
+            "id": 24,
+            "type": "service",
+            "date": "2026-05-11T09:01:00",
+            "date_unixtime": "1778489460",
+            "actor": "Stuff to Watch/Listen/Read",
+            "action": "channel_create",
+        },
+    ],
+}
+
 
 
 # ---------------------------------------------------------------------------
@@ -153,6 +235,34 @@ def test_backfill_keeps_status_on_a_second_run(app, tmp_path):
 
         again = store.get_reading_item_by_key("https://example.com/attention")
         assert again["status"] == "done"
+
+
+def test_backfill_reads_a_json_export(app, tmp_path):
+    path = tmp_path / "result.json"
+    path.write_text(json.dumps(EXPORT_JSON), encoding="utf-8")
+
+    with app.app_context():
+        counts = backfill.import_export(str(path))
+        assert counts == {"seen": 3, "added": 3, "total": 3}
+
+        items = {item["url_key"]: item for item in store.list_reading_items()}
+
+        article = items["https://stratechery.com/aggregation-theory"]
+        assert article["site"] == "stratechery.com"
+        assert article["source"] == "export"
+        assert article["saved_at"] == "2026-05-08T14:58:43Z"
+
+        link = items["https://framer.com/blog/harness-2"]
+        assert link["title"] == "Harness engineering"
+        assert link["description"] == "Worth reading: Harness engineering"
+
+        assert items["export:22"]["description"] == "Remember to cancel the subscription"
+        assert "export:23" not in items
+
+        item = store.get_reading_item_by_key("https://stratechery.com/aggregation-theory")
+        store.update_reading_item(item["id"], {"status": "done"})
+        assert backfill.import_export(str(path))["added"] == 0
+        assert store.get_reading_item_by_key("https://stratechery.com/aggregation-theory")["status"] == "done"
 
 
 # ---------------------------------------------------------------------------
