@@ -174,7 +174,7 @@ The list is newest-first. All filtering is client-side, so it stays fast for a p
 
 - **Telegram.** Create a bot with @BotFather and make it an admin in the channel. Admin rights are what let it read every post and delete a finished message. Put the token in `.env` as `TELEGRAM_BOT_TOKEN`. The server long-polls `getUpdates` on a background thread, so there is no webhook and no new public port. Set `TELEGRAM_CHAT_IDS` to accept only your channel.
 - **Manual.** Paste a link into the box on `/library`.
-- **Backfill.** `python -m capture.backfill` parses the Telegram export (`messages.html` by default) and adds every link and note. It reads the file directly, and a second run adds nothing.
+- **Backfill.** `python -m capture.backfill` parses the Telegram export (`messages.html` by default, or a JSON `result.json` via `--html`) and adds every link and note. It reads the file directly, and a second run adds nothing. A JSON export has no link previews, so `python -m capture.titles` follows up by filling each empty title from the page itself; it never overwrites a title that already exists.
 
 **Done list.** Set `TELEGRAM_DONE_CHAT_ID` to your done-list chat. Marking an item `done` forwards the original Telegram message there, then deletes it from the source channel. The forward happens first: if it fails, the item stays in its previous status. A failed delete leaves the item archived and marks the row with an `archive issue` note. Items from the export have no live message, so they only change status locally.
 

@@ -19,7 +19,8 @@ The Python package is `capture/`. It is a single Flask app: library, cards, revi
 ```bash
 ./capture/run.sh                      # local server on :8765
 .venv/bin/python -m pytest capture/tests -q
-.venv/bin/python -m capture.backfill  # load messages.html into the library
+.venv/bin/python -m capture.backfill  # load an export into the library
+.venv/bin/python -m capture.titles    # fill empty titles from page metadata
 ```
 
 Deploy is a code sync. Hermes is a git checkout on `main` with origin set:
@@ -80,7 +81,9 @@ curl -s https://hermes.taila17c7c.ts.net/api/health
 
 ## Backfill
 
-`python -m capture.backfill` parses `messages.html` directly. It is the history path and is safe to rerun. It does not read `lecture_today.db`; that old import was removed. Export rows have no live message id, so they cannot be forwarded or undone through Telegram.
+`python -m capture.backfill --html <path>` parses a Telegram export and is the history path. Both export shapes work: `messages.html` and the JSON `result.json` (pass it with `--html`). It is safe to rerun. It does not read `lecture_today.db`; that old import was removed. Export rows have no live message id, so they cannot be forwarded or undone through Telegram.
+
+The JSON export carries no link previews, so imported links arrive untitled. `python -m capture.titles` fills those from each page (`og:title`/`<title>`, oEmbed for YouTube and X, the abstract page for arXiv PDFs). It only writes to empty titles, so it never replaces one you or Telegram supplied. It is a one-shot command; do not start it from `create_app()`.
 
 ## Testing
 
@@ -94,7 +97,7 @@ curl -s https://hermes.taila17c7c.ts.net/api/health
 - `/library` and `/api/library` are the reading list, paged 200 at a time.
 - `/api/library/:id/undo` reverses a done item.
 - `/api/health` exposes the Telegram state. Check it first when ingestion looks dead.
-- `messages.html` is the Telegram export. `capture/backfill.py` reads it.
+- `messages.html` is the Telegram export. `capture/backfill.py` reads it, or a JSON `result.json` export.
 
 ## Git
 
