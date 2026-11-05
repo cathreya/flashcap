@@ -317,6 +317,19 @@ def test_fetch_title_uses_oembed_for_youtube_and_x(monkeypatch):
     assert calls[1].startswith("https://publish.twitter.com/oembed?")
 
 
+def test_fetch_title_reads_arxiv_pdfs_through_the_abstract_page(monkeypatch):
+    seen = []
+
+    def fake_page_title(url, timeout):
+        seen.append(url)
+        return "A paper"
+
+    monkeypatch.setattr(titles, "_page_title", fake_page_title)
+
+    assert titles.fetch_title("https://arxiv.org/pdf/2106.02026.pdf") == "A paper"
+    assert seen == ["https://arxiv.org/abs/2106.02026"]
+
+
 def test_fill_titles_only_touches_empty_titles(app, monkeypatch):
     with app.app_context():
         unnamed = store.upsert_reading_item(

@@ -48,12 +48,15 @@ _TITLE_META = (
 )
 _YOUTUBE_HOSTS = {"youtube.com", "m.youtube.com", "youtu.be"}
 _TWITTER_HOSTS = {"x.com", "twitter.com", "mobile.twitter.com"}
+_ARXIV_HOSTS = {"arxiv.org", "www.arxiv.org"}
+_ARXIV_PDF = re.compile(r"^/pdf/(.+?)\.pdf/?$", re.IGNORECASE)
 _NETWORK_ERRORS = (HTTPError, URLError, TimeoutError, OSError, ValueError)
 
 
 def fetch_title(url: str, timeout: int = TIMEOUT) -> str | None:
     """Return a page's title, or ``None`` when the page offers nothing usable."""
-    host = (urlsplit(url).hostname or "").lower()
+    parts = urlsplit(url)
+    host = (parts.hostname or "").lower()
     if host.startswith("www."):
         host = host[4:]
 
@@ -65,6 +68,10 @@ def fetch_title(url: str, timeout: int = TIMEOUT) -> str | None:
         title = _tweet_title(url, timeout)
         if title:
             return title
+    elif host in _ARXIV_HOSTS:
+        match = _ARXIV_PDF.match(parts.path)
+        if match:
+            return _page_title(f"https://arxiv.org/abs/{match.group(1)}", timeout)
 
     return _page_title(url, timeout)
 
