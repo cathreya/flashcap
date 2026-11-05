@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from capture import backfill, library, server, store, telegram
+from capture import backfill, library, server, store, telegram, titles
 
 
 @pytest.fixture()
@@ -263,6 +263,103 @@ def test_backfill_reads_a_json_export(app, tmp_path):
         store.update_reading_item(item["id"], {"status": "done"})
         assert backfill.import_export(str(path))["added"] == 0
         assert store.get_reading_item_by_key("https://stratechery.com/aggregation-theory")["status"] == "done"
+
+
+# ---------------------------------------------------------------------------
+# Title backfill
+# ---------------------------------------------------------------------------
+
+def test_fetch_title_prefers_og_title_then_title_tag(monkeypatch):
+    pages = {
+        "https://a.example/og": b'<html><head><meta property="og:title" content="OG  title">'
+        b"<title>Tag title</title></head></html>",
+        "https://a.example/tag": b"<html><head><title>Tag title</title></head></html>",
+    }
+
+    class FakeResponse:
+        def __init__(self, body):
+            self.body = body
+            self.headers = {"Content-Type": "text/html; charset=utf-8"}
+
+        def read(self, _size):
+            return self.body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    monkeypatch.setattr(
+        titles, "urlopen", lambda request, timeout: FakeResponse(pages[request.full_url])
+    )
+
+    assert titles.fetch_title("https://a.example/og") == "OG title"
+    assert titles.fetch_title("https://a.example/tag") == "Tag title"
+
+
+def test_fetch_title_uses_oembed_for_youtube_and_x(monkeypatch):
+    calls = []
+
+    def fake_oembed(endpoint, timeout):
+        calls.append(endpoint)
+        if "youtube.com/oembed" in endpoint:
+            return {"title": "A talk"}
+        return {"html": '<blockquote><p lang="en">Ship it  https://t.co/abc</p></blockquote>'}
+
+    monkeypatch.setattr(titles, "_oembed", fake_oembed)
+
+    assert titles.fetch_title("https://youtu.be/abc123?si=x") == "A talk"
+    assert (
+        titles.fetch_title("https://x.com/someone/status/123?s=20") == "Ship it"
+    )
+    assert calls[0].startswith("https://www.youtube.com/oembed?")
+    assert calls[1].startswith("https://publish.twitter.com/oembed?")
+
+
+def test_fill_titles_only_touches_empty_titles(app, monkeypatch):
+    with app.app_context():
+        unnamed = store.upsert_reading_item(
+            {"url": "https://a.example/1", "url_key": "https://a.example/1"}
+        )
+        named = store.upsert_reading_item(
+            {
+                "url": "https://a.example/2",
+                "url_key": "https://a.example/2",
+                "title": "Already named",
+            }
+        )
+        note = store.upsert_reading_item(
+            {"url_key": "export:99", "description": "a note"}
+        )
+
+        calls = []
+
+        def fake_fetch(url, timeout=10):
+            calls.append(url)
+            return "Fetched title" if url.endswith("/1") else "Should not be used"
+
+        monkeypatch.setattr(titles, "fetch_title", fake_fetch)
+
+        counts = titles.fill_titles()
+        assert counts == {"candidates": 1, "filled": 1, "failed": 0}
+        assert calls == ["https://a.example/1"]
+
+        assert store.get_reading_item(unnamed["id"])["title"] == "Fetched title"
+        assert store.get_reading_item(named["id"])["title"] == "Already named"
+        assert store.get_reading_item(note["id"])["title"] is None
+
+
+def test_fill_titles_dry_run_writes_nothing(app, monkeypatch):
+    with app.app_context():
+        item = store.upsert_reading_item(
+            {"url": "https://a.example/3", "url_key": "https://a.example/3"}
+        )
+        monkeypatch.setattr(titles, "fetch_title", lambda url, timeout=10: "New title")
+
+        counts = titles.fill_titles(dry_run=True)
+        assert counts["filled"] == 1
+        assert store.get_reading_item(item["id"])["title"] is None
 
 
 # ---------------------------------------------------------------------------

@@ -851,6 +851,43 @@ def update_reading_item(
     return get_reading_item(item_id)
 
 
+def set_reading_title_if_empty(item_id: int, title: str) -> bool:
+    """Fill a title only when the stored row has none.
+
+    Returns ``True`` when the row changed, so callers can count real fills and
+    never clobber a title the user or Telegram supplied.
+    """
+    value = _trim(title, 400)
+    if not value:
+        return False
+    db = get_db()
+    cursor = db.execute(
+        """
+        UPDATE reading_items
+           SET title = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+         WHERE id = ? AND (title IS NULL OR title = '')
+        """,
+        (value, item_id),
+    )
+    db.commit()
+    return cursor.rowcount > 0
+
+
+def list_reading_items_without_title(limit: int = 0) -> list[dict[str, Any]]:
+    """Return rows that have a URL but no title, newest first."""
+    sql = (
+        "SELECT * FROM reading_items"
+        " WHERE url IS NOT NULL AND url != ''"
+        " AND (title IS NULL OR title = '')"
+        " ORDER BY saved_at DESC, id DESC"
+    )
+    params: list[Any] = []
+    if limit:
+        sql += " LIMIT ?"
+        params.append(int(limit))
+    return [row_to_reading_item(r) for r in get_db().execute(sql, params).fetchall()]
+
+
 def delete_reading_item(item_id: int) -> bool:
     db = get_db()
     cursor = db.execute("DELETE FROM reading_items WHERE id = ?", (item_id,))
