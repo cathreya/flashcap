@@ -333,6 +333,13 @@ def test_fetch_title_reads_arxiv_pdfs_through_the_abstract_page(monkeypatch):
     assert seen[-1] == "https://arxiv.org/abs/1606.06565v2"
 
 
+def test_clean_rejects_bot_walls_but_keeps_real_titles():
+    assert titles._clean("Just a moment...") is None
+    assert titles._clean("Attention Required! | Cloudflare") is None
+    assert titles._clean("Redirecting…") is None
+    assert titles._clean("Just a Moment in Time") == "Just a Moment in Time"
+
+
 def test_fill_titles_only_touches_empty_titles(app, monkeypatch):
     with app.app_context():
         unnamed = store.upsert_reading_item(

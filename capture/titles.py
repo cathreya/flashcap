@@ -46,6 +46,18 @@ _TITLE_META = (
     {"name": "twitter:title"},
     {"property": "twitter:title"},
 )
+_BLOCK_TITLES = {
+    "just a moment",
+    "access denied",
+    "attention required",
+    "checking your browser",
+    "redirecting",
+    "are you a robot",
+    "please verify you are a human",
+    "too many requests",
+    "enable javascript and cookies to continue",
+    "this site can't be reached",
+}
 _YOUTUBE_HOSTS = {"youtube.com", "m.youtube.com", "youtu.be"}
 _TWITTER_HOSTS = {"x.com", "twitter.com", "mobile.twitter.com"}
 _ARXIV_HOSTS = {"arxiv.org", "www.arxiv.org"}
@@ -202,8 +214,13 @@ def _oembed(endpoint: str, timeout: int) -> dict:
 
 
 def _clean(raw: object) -> str | None:
+    """Normalise a title, treating bot-wall and redirect stubs as no title."""
     text = " ".join(str(raw or "").split())
     if not text:
+        return None
+    probe = re.sub(r"(\s*[|·—-]\s*)?cloudflare$", "", text.lower())
+    probe = re.sub(r"[\s.!…|]+$", "", probe).strip()
+    if probe in _BLOCK_TITLES:
         return None
     return text[:_MAX_LEN]
 
