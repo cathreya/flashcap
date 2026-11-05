@@ -329,6 +329,9 @@ def test_fetch_title_reads_arxiv_pdfs_through_the_abstract_page(monkeypatch):
     assert titles.fetch_title("https://arxiv.org/pdf/2106.02026.pdf") == "A paper"
     assert seen == ["https://arxiv.org/abs/2106.02026"]
 
+    assert titles.fetch_title("https://arxiv.org/pdf/1606.06565v2") == "A paper"
+    assert seen[-1] == "https://arxiv.org/abs/1606.06565v2"
+
 
 def test_fill_titles_only_touches_empty_titles(app, monkeypatch):
     with app.app_context():

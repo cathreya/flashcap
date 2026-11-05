@@ -49,7 +49,7 @@ _TITLE_META = (
 _YOUTUBE_HOSTS = {"youtube.com", "m.youtube.com", "youtu.be"}
 _TWITTER_HOSTS = {"x.com", "twitter.com", "mobile.twitter.com"}
 _ARXIV_HOSTS = {"arxiv.org", "www.arxiv.org"}
-_ARXIV_PDF = re.compile(r"^/pdf/(.+?)\.pdf/?$", re.IGNORECASE)
+_ARXIV_PDF = re.compile(r"^/pdf/(.+?)(?:\.pdf)?/?$", re.IGNORECASE)
 _NETWORK_ERRORS = (HTTPError, URLError, TimeoutError, OSError, ValueError)
 
 
