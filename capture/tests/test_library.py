@@ -337,7 +337,11 @@ def test_clean_rejects_bot_walls_but_keeps_real_titles():
     assert titles._clean("Just a moment...") is None
     assert titles._clean("Attention Required! | Cloudflare") is None
     assert titles._clean("Redirecting…") is None
+    assert titles._clean("Checking your browser - reCAPTCHA") is None
     assert titles._clean("Just a Moment in Time") == "Just a Moment in Time"
+    assert titles._clean("Redirecting Users Without Losing Them") == (
+        "Redirecting Users Without Losing Them"
+    )
 
 
 def test_fill_titles_only_touches_empty_titles(app, monkeypatch):

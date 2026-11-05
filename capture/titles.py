@@ -46,18 +46,17 @@ _TITLE_META = (
     {"name": "twitter:title"},
     {"property": "twitter:title"},
 )
-_BLOCK_TITLES = {
-    "just a moment",
-    "access denied",
-    "attention required",
+_BLOCK_EXACT = {"just a moment", "redirecting", "access denied", "captcha"}
+_BLOCK_PREFIX = (
     "checking your browser",
-    "redirecting",
+    "attention required",
     "are you a robot",
     "please verify you are a human",
     "too many requests",
-    "enable javascript and cookies to continue",
+    "enable javascript",
     "this site can't be reached",
-}
+    "one more step",
+)
 _YOUTUBE_HOSTS = {"youtube.com", "m.youtube.com", "youtu.be"}
 _TWITTER_HOSTS = {"x.com", "twitter.com", "mobile.twitter.com"}
 _ARXIV_HOSTS = {"arxiv.org", "www.arxiv.org"}
@@ -220,7 +219,7 @@ def _clean(raw: object) -> str | None:
         return None
     probe = re.sub(r"(\s*[|·—-]\s*)?cloudflare$", "", text.lower())
     probe = re.sub(r"[\s.!…|]+$", "", probe).strip()
-    if probe in _BLOCK_TITLES:
+    if probe in _BLOCK_EXACT or probe.startswith(_BLOCK_PREFIX):
         return None
     return text[:_MAX_LEN]
 
